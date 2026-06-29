@@ -6,7 +6,6 @@ Includes: Prediction, SHAP explainability, Groq plain-text explanation
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from matplotlib.dates import FR
 from pydantic import BaseModel, Field
 import pickle
 import numpy as np
