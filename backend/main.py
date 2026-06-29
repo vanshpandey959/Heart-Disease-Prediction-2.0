@@ -6,6 +6,7 @@ Includes: Prediction, SHAP explainability, Groq plain-text explanation
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from matplotlib.dates import FR
 from pydantic import BaseModel, Field
 import pickle
 import numpy as np
@@ -72,16 +73,18 @@ app = FastAPI(title="HeartPredict API", version="1.0.0", lifespan=lifespan)
 ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
-    os.getenv("FRONTEND_URL", ""),   # set this to your Vercel URL in Render env vars
+    os.getenv("FRONTEND_URL", ""),
 ]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[o for o in ALLOWED_ORIGINS if o],
+    allow_origin_regex=r"https://.*\.vercel\.app",  # allows all vercel preview URLs
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 # ── Schema ────────────────────────────────────────────────────────────────────
 
