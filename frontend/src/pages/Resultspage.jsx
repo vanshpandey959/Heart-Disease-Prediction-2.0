@@ -23,7 +23,7 @@ const TopFactors = ({ contributions }) => {
   const top = Object.entries(contributions)
     .filter(([, v]) => v > 0.01)
     .slice(0, 3);
-
+   
   return (
     <div>
       <h3 className="font-bold text-gray-800 mb-3">Top Risk Factors</h3>

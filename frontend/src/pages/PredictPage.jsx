@@ -18,6 +18,8 @@ const defaultForm = {
   Oldpeak: 0, ST_Slope: "Up",
 };
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
 export default function PredictPage() {
   const navigate = useNavigate();
   const [form, setForm] = useState(defaultForm);
@@ -30,14 +32,13 @@ export default function PredictPage() {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch("http://localhost:8000/predict", {
+      const res = await fetch(`${API_URL}/predict`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
       if (!res.ok) throw new Error("Prediction failed. Check that the backend is running.");
       const data = await res.json();
-      // Navigate to results page, passing result as route state
       navigate("/results", { state: { result: data } });
     } catch (err) {
       setError(err.message);
@@ -49,13 +50,10 @@ export default function PredictPage() {
   return (
     <div className="min-h-screen bg-gray-50">
 
-      {/* Header */}
       <div className="border-b bg-white text-center shadow-sm">
         <div className="max-w-7xl mx-auto px-8 py-8">
-          <h1 className="text-3xl font-bold font-poppins text-gray-900">
-            Heart Disease Prediction
-          </h1>
-          <p className="mt-2 text-gray-500 font-nunito">
+          <h1 className="text-3xl font-bold text-gray-900">Heart Disease Prediction</h1>
+          <p className="mt-2 text-gray-500">
             Enter your health information to estimate your heart disease risk.
           </p>
         </div>
@@ -64,7 +62,6 @@ export default function PredictPage() {
       <div className="max-w-7xl mx-auto px-8 py-8">
         <div className="grid lg:grid-cols-2 gap-8">
 
-          {/* Personal Information */}
           <Section title="Personal Information" subtitle="Basic demographic details" icon={FiUser}>
             <div className="space-y-8">
               <Slider label="Age" value={form.Age} min={20} max={80} unit="Years" onChange={set("Age")} />
@@ -89,7 +86,6 @@ export default function PredictPage() {
             </div>
           </Section>
 
-          {/* Clinical Measurements */}
           <Section title="Clinical Measurements" subtitle="Vitals and laboratory values" icon={FiActivity}>
             <div className="space-y-8">
               <Slider label="Resting Blood Pressure" value={form.RestingBP} min={80}  max={200} unit="mmHg"  onChange={set("RestingBP")} />
@@ -105,7 +101,6 @@ export default function PredictPage() {
             </div>
           </Section>
 
-          {/* ECG */}
           <Section title="ECG Information" subtitle="Electrocardiogram findings" icon={FiBarChart2}>
             <RadioGroup
               label="Resting ECG"
@@ -120,7 +115,6 @@ export default function PredictPage() {
             />
           </Section>
 
-          {/* Exercise */}
           <Section title="Exercise Test" subtitle="Exercise induced measurements" icon={FiTrendingUp}>
             <div className="space-y-8">
               <Toggle
@@ -135,9 +129,9 @@ export default function PredictPage() {
                 onChange={set("ST_Slope")}
                 columns={3}
                 options={[
-                  { label: "Up",   value: "Up",   description: "Up Sloping",   icon: FiTrendingUp },
-                  { label: "Flat", value: "Flat", description: "Flat",          icon: FiActivity },
-                  { label: "Down", value: "Down", description: "Down Sloping",  icon: FiTrendingDown },
+                  { label: "Up",   value: "Up",   description: "Up Sloping",  icon: FiTrendingUp },
+                  { label: "Flat", value: "Flat", description: "Flat",         icon: FiActivity },
+                  { label: "Down", value: "Down", description: "Down Sloping", icon: FiTrendingDown },
                 ]}
               />
             </div>

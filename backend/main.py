@@ -21,8 +21,6 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("heartpredict")
 
-# ── Artifacts ─────────────────────────────────────────────────────────────────
-
 ARTIFACTS = Path(__file__).parent / "artifacts"
 
 def load_artifact(name: str):
@@ -37,8 +35,6 @@ scaler = None
 feature_columns = None
 explainer = None
 groq_client = None
-
-# ── Startup ───────────────────────────────────────────────────────────────────
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -57,7 +53,7 @@ async def lifespan(app: FastAPI):
         explainer  = shap.KernelExplainer(model.predict_proba, background)
         logger.info("✅ SHAP explainer ready.")
     except FileNotFoundError:
-        logger.warning("⚠️  backgroundKmeans.pkl not found. SHAP disabled. Save it from your notebook.")
+        logger.warning("⚠️  backgroundKmeans.pkl not found. SHAP disabled.")
     except Exception as e:
         logger.warning(f"⚠️  SHAP init failed: {e}")
 
@@ -66,15 +62,22 @@ async def lifespan(app: FastAPI):
         groq_client = Groq(api_key=api_key)
         logger.info("✅ Groq client ready.")
     else:
-        logger.warning("⚠️  GROQ_API_KEY not set. Plain-text explanation disabled.")
+        logger.warning("⚠️  GROQ_API_KEY not set.")
 
     yield
 
 app = FastAPI(title="HeartPredict API", version="1.0.0", lifespan=lifespan)
 
+# ── CORS — allow localhost dev + Vercel production ────────────────────────────
+ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    os.getenv("FRONTEND_URL", ""),   # set this to your Vercel URL in Render env vars
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=[o for o in ALLOWED_ORIGINS if o],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -144,7 +147,6 @@ def compute_shap(df_enc: pd.DataFrame) -> dict:
     arr = scaler.transform(df_enc) if scaler is not None else df_enc.values
     shap_vals = explainer.shap_values(arr)
 
-    # Handle varying output shapes from KernelExplainer
     if isinstance(shap_vals, list):
         vals = np.array(shap_vals[1]).flatten()
     else:
