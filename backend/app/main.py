@@ -5,15 +5,16 @@ Groq client, CORS, and all routers.
 """
 
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.utils.logger import logger
 from app.database import connect_to_mongo, close_mongo_connection
 from app.services.ml_service import ml_service
 from app.services.groq_service import groq_service
-from app.routes import auth_router, predict_router, history_router
+from app.routes import auth_router, predict_router, history_router, wellness_router
 
 
 @asynccontextmanager
@@ -47,10 +48,34 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ── Global exception handler ───────────────────────────────────────────────────
+# IMPORTANT: Starlette's CORSMiddleware only attaches CORS headers to responses
+# that come back through it normally. If a route raises an *unhandled* exception
+# (like the `UserOut` subscript bug), it propagates straight past CORSMiddleware
+# up to Starlette's outer ServerErrorMiddleware, which builds the fallback 500
+# response *without* CORS headers. The browser then reports this as a CORS
+# error ("blocked by CORS policy"), even though the real problem is a 500.
+#
+# Registering a handler for the base Exception here means FastAPI's
+# ExceptionMiddleware (which sits *inside* CORSMiddleware) catches it first and
+# turns it into a normal JSONResponse, which *does* flow back out through
+# CORSMiddleware and gets headers attached correctly. This doesn't fix bugs,
+# but it means a bug elsewhere in the future won't ever look like a CORS issue
+# again — you'll see the real error message in the response body/console.
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Unhandled error on {request.method} {request.url.path}: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error. Please try again."},
+    )
+
+
 # ── Routers ────────────────────────────────────────────────────────────────────
 app.include_router(auth_router)
 app.include_router(predict_router)
 app.include_router(history_router)
+app.include_router(wellness_router)
 
 
 # ── Misc top-level routes ──────────────────────────────────────────────────────

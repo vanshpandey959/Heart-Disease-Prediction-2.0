@@ -9,6 +9,7 @@ import ResultsPage from "./pages/ResultsPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import ReportsPage from "./pages/ReportsPage";
+import WellnessPage from "./pages/WellnessPage";
 import { fetchCurrentUser } from "./store/slices/authSlice";
 
 export default function App() {
@@ -39,6 +40,7 @@ export default function App() {
                 </ProtectedRoute>
               }
             />
+            <Route path="/wellness" element={<WellnessPage />} />
           </Routes>
         </main>
       </div>

@@ -85,6 +85,7 @@ const historySlice = createSlice({
       .addCase(savePrediction.fulfilled, (state, action) => {
         state.saveStatus = "succeeded";
         state.items.unshift(action.payload);
+        state.lastSavedId = action.payload.id;  
       })
       .addCase(savePrediction.rejected, (state, action) => {
         state.saveStatus = "failed";
@@ -93,6 +94,9 @@ const historySlice = createSlice({
       // Delete
       .addCase(deletePrediction.fulfilled, (state, action) => {
         state.items = state.items.filter((item) => item.id !== action.payload);
+        if (state.lastSavedId === action.payload) {
+          state.lastSavedId = null;
+        }
       });
   },
 });

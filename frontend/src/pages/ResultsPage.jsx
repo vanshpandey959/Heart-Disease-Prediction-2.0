@@ -7,7 +7,9 @@ import RiskGauge from "../components/Results/RiskGauge";
 import ShapChart from "../components/Results/ShapChart";
 import ContributionPie from "../components/Results/ContributionPie";
 import ProbabilityBar from "../components/Results/ProbabilityBar";
+import { openWellnessChat } from "../store/slices/wellnessSlice";
 import { savePrediction, clearSaveStatus } from "../store/slices/historySlice";
+import { clearPrediction } from "../store/slices/predictionSlice";
 
 // ── Small reusable card wrapper ───────────────────────────────────────────────
 const Card = ({ children, className = "" }) => (
@@ -110,11 +112,17 @@ const InputSummary = ({ inputs }) => {
 };
 
 // ── Main Results Page ─────────────────────────────────────────────────────────
+// Dual-mode:
+//  - source === "live"  -> just ran a prediction on PredictPage. Show Save Report.
+//  - source === "saved" -> opened from ReportsPage ("View" a saved report).
+//                           Show Generate Wellness Plan instead (that CTA now
+//                           only lives in the Reports flow, per product decision).
 export default function ResultsPage() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
   const result = useSelector((state) => state.prediction.result);
+  const source = useSelector((state) => state.prediction.source);
   const token = useSelector((state) => state.auth.token);
   const { saveStatus, saveError } = useSelector((state) => state.history);
 
@@ -138,6 +146,7 @@ export default function ResultsPage() {
   const isHigh = prediction === 1;
   const accentColor = isHigh ? "#B91C1C" : "#15803D";
   const hasSHAP = shap_contributions && Object.keys(shap_contributions).length > 0;
+  const isSaved = source === "saved";
 
   const handleSave = () => {
     if (!token) {
@@ -145,6 +154,16 @@ export default function ResultsPage() {
       return;
     }
     dispatch(savePrediction(result));
+  };
+
+  const handleReassess = () => {
+    dispatch(clearPrediction());
+    navigate("/predict");
+  };
+
+  const handleGeneratePlan = () => {
+    dispatch(openWellnessChat({ reportId: result.id, reportData: result }));
+    navigate("/wellness");
   };
 
   return (
@@ -166,7 +185,9 @@ export default function ResultsPage() {
           <h1 className="text-3xl font-black text-white">{prediction_label}</h1>
         </div>
         <p className="text-white/70 text-sm">
-          Based on your 11 clinical inputs · AI-powered analysis
+          {isSaved
+            ? "Saved report · AI-powered analysis"
+            : "Based on your 11 clinical inputs · AI-powered analysis"}
         </p>
       </div>
 
@@ -201,13 +222,13 @@ export default function ResultsPage() {
           <InputSummary inputs={input_summary} />
         </Card>
 
-        {/* ── Save feedback ── */}
-        {saveStatus === "succeeded" && (
+        {/* ── Save feedback (live predictions only) ── */}
+        {!isSaved && saveStatus === "succeeded" && (
           <div className="rounded-xl border border-green-200 bg-green-50 p-3 text-green-700 text-sm font-medium text-center">
             ✓ Saved to your reports
           </div>
         )}
-        {saveStatus === "failed" && (
+        {!isSaved && saveStatus === "failed" && (
           <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-red-600 text-sm font-medium text-center">
             {saveError}
           </div>
@@ -215,32 +236,54 @@ export default function ResultsPage() {
 
         {/* ── Actions ── */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center pt-2">
-          <button
-            onClick={handleSave}
-            disabled={saveStatus === "loading" || saveStatus === "succeeded"}
-            className="flex items-center justify-center gap-2 px-8 py-3 rounded-full font-bold border-2 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
-            style={{ borderColor: accentColor, color: accentColor, background: "white" }}
-          >
-            {saveStatus === "succeeded" ? <FiCheck /> : <FiBookmark />}
-            {token
-              ? saveStatus === "succeeded" ? "Saved" : saveStatus === "loading" ? "Saving..." : "Save Report"
-              : "Log in to Save"}
-          </button>
-          <button
-            onClick={() => navigate("/predict")}
-            className="flex items-center justify-center gap-2 px-8 py-3 rounded-full font-bold text-white transition-all hover:opacity-90"
-            style={{ background: accentColor }}
-          >
-            <FiRefreshCw />
-            Re-assess
-          </button>
-          <button
-            onClick={() => navigate("/")}
-            className="flex items-center justify-center gap-2 px-8 py-3 rounded-full font-bold border-2 text-gray-700 border-gray-200 bg-white hover:bg-gray-50 transition-all"
-          >
-            <FiArrowLeft />
-            Back to Home
-          </button>
+          {isSaved ? (
+            <>
+              <button
+                onClick={handleGeneratePlan}
+                className="flex items-center justify-center gap-2 px-8 py-3 rounded-full font-bold text-white transition-all hover:opacity-90"
+                style={{ background: accentColor }}
+              >
+                <HiOutlineSparkles />
+                Generate Wellness Plan
+              </button>
+              <button
+                onClick={() => navigate("/reports")}
+                className="flex items-center justify-center gap-2 px-8 py-3 rounded-full font-bold border-2 text-gray-700 border-gray-200 bg-white hover:bg-gray-50 transition-all"
+              >
+                <FiArrowLeft />
+                Back to Reports
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={handleSave}
+                disabled={saveStatus === "loading" || saveStatus === "succeeded"}
+                className="flex items-center justify-center gap-2 px-8 py-3 rounded-full font-bold border-2 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                style={{ borderColor: accentColor, color: accentColor, background: "white" }}
+              >
+                {saveStatus === "succeeded" ? <FiCheck /> : <FiBookmark />}
+                {token
+                  ? saveStatus === "succeeded" ? "Saved" : saveStatus === "loading" ? "Saving..." : "Save Report"
+                  : "Log in to Save"}
+              </button>
+              <button
+                onClick={handleReassess}
+                className="flex items-center justify-center gap-2 px-8 py-3 rounded-full font-bold text-white transition-all hover:opacity-90"
+                style={{ background: accentColor }}
+              >
+                <FiRefreshCw />
+                Re-assess
+              </button>
+              <button
+                onClick={() => navigate("/")}
+                className="flex items-center justify-center gap-2 px-8 py-3 rounded-full font-bold border-2 text-gray-700 border-gray-200 bg-white hover:bg-gray-50 transition-all"
+              >
+                <FiArrowLeft />
+                Back to Home
+              </button>
+            </>
+          )}
         </div>
 
         {/* ── Disclaimer ── */}

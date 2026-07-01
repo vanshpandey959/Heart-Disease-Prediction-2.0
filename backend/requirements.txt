@@ -5,7 +5,7 @@ pydantic-settings
 python-dotenv
 
 # Database
-motor
+motor==3.7.1
 
 # Auth
 passlib[bcrypt]

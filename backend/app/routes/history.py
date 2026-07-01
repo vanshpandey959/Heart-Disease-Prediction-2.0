@@ -16,8 +16,18 @@ from app.utils.logger import logger
 
 router = APIRouter(prefix="/history", tags=["History"])
 
+# NOTE: response_model_by_alias=False — without it FastAPI serializes the `id`
+# field back out under its Mongo alias "_id", so the frontend (which reads
+# `item.id` everywhere) gets `undefined`. This was the root cause of "delete
+# doesn't work" (DELETE /history/undefined -> 400/404).
 
-@router.post("/save", response_model=PredictionOut, status_code=status.HTTP_201_CREATED)
+
+@router.post(
+    "/save",
+    response_model=PredictionOut,
+    response_model_by_alias=False,
+    status_code=status.HTTP_201_CREATED,
+)
 async def save_prediction(
     data: SavePredictionRequest,
     current_user: UserOut = Depends(get_current_user),
@@ -36,7 +46,7 @@ async def save_prediction(
     return PredictionOut.model_validate(saved)
 
 
-@router.get("/", response_model=list[PredictionOut])
+@router.get("/", response_model=list[PredictionOut], response_model_by_alias=False)
 async def get_history(current_user: UserOut = Depends(get_current_user)):
     predictions = get_predictions_collection()
 

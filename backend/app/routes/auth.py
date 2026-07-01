@@ -12,8 +12,20 @@ from app.utils.logger import logger
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
+# NOTE: response_model_by_alias=False here for the same reason as history.py
+# and wellness.py — TokenResponse embeds `user: UserOut`, and UserOut aliases
+# id -> "_id" for Mongo storage. Without this flag, the JSON sent to the
+# frontend on register/login would contain "user": {"_id": ...} instead of
+# {"id": ...}, so any code reading `user.id` (e.g. a Navbar, profile page,
+# or ownership check) would silently get `undefined`.
 
-@router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
+
+@router.post(
+    "/register",
+    response_model=TokenResponse,
+    response_model_by_alias=False,
+    status_code=status.HTTP_201_CREATED,
+)
 async def register(data: UserCreate):
     if data.gender not in VALID_GENDER:
         raise HTTPException(400, f"gender must be one of {VALID_GENDER}")
@@ -28,7 +40,7 @@ async def register(data: UserCreate):
     return TokenResponse(access_token=token, user=UserOut.model_validate(user_doc))
 
 
-@router.post("/login", response_model=TokenResponse)
+@router.post("/login", response_model=TokenResponse, response_model_by_alias=False)
 async def login(data: UserLogin):
     user_doc = await get_user_by_email(data.email)
 
@@ -47,6 +59,6 @@ async def login(data: UserLogin):
     return TokenResponse(access_token=token, user=UserOut.model_validate(user_doc))
 
 
-@router.get("/me", response_model=UserOut)
+@router.get("/me", response_model=UserOut, response_model_by_alias=False)
 async def get_me(current_user: UserOut = Depends(get_current_user)):
     return current_user

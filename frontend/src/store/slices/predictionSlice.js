@@ -19,6 +19,10 @@ const initialState = {
   result: null,
   status: "idle",
   error: null,
+  // "live"  -> came from a fresh /predict call on PredictPage (show Save button)
+  // "saved" -> came from ReportsPage, viewing a previously saved report
+  //            (show Generate Plan button instead, hide Save)
+  source: null,
 };
 
 const predictionSlice = createSlice({
@@ -29,6 +33,15 @@ const predictionSlice = createSlice({
       state.result = null;
       state.status = "idle";
       state.error = null;
+      state.source = null;
+    },
+    // Used by ReportsPage to reuse ResultsPage for viewing a saved report,
+    // instead of duplicating the whole gauge/chart/summary UI in a modal.
+    viewSavedResult: (state, action) => {
+      state.result = action.payload;
+      state.status = "succeeded";
+      state.error = null;
+      state.source = "saved";
     },
   },
   extraReducers: (builder) => {
@@ -40,6 +53,7 @@ const predictionSlice = createSlice({
       .addCase(runPrediction.fulfilled, (state, action) => {
         state.status = "succeeded";
         state.result = action.payload;
+        state.source = "live";
       })
       .addCase(runPrediction.rejected, (state, action) => {
         state.status = "failed";
@@ -48,5 +62,5 @@ const predictionSlice = createSlice({
   },
 });
 
-export const { clearPrediction } = predictionSlice.actions;
+export const { clearPrediction, viewSavedResult } = predictionSlice.actions;
 export default predictionSlice.reducer;
