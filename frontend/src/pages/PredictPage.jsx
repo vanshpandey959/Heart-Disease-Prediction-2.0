@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
 import {
   FiUser, FiActivity, FiHeart,
   FiTrendingUp, FiTrendingDown, FiBarChart2, FiAlertCircle,
@@ -10,6 +11,7 @@ import Slider from "../components/Predict/Slider";
 import Toggle from "../components/Predict/Toggle";
 import RadioGroup from "../components/Predict/RadioGroup";
 import Button from "../components/Predict/Button";
+import { runPrediction } from "../store/slices/predictionSlice";
 
 const defaultForm = {
   Age: 50, Sex: "M", ChestPainType: "ATA",
@@ -18,32 +20,18 @@ const defaultForm = {
   Oldpeak: 0, ST_Slope: "Up",
 };
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
-
 export default function PredictPage() {
+  const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { status, error } = useSelector((state) => state.prediction);
   const [form, setForm] = useState(defaultForm);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
 
   const set = (key) => (value) => setForm((prev) => ({ ...prev, [key]: value }));
 
   const handlePredict = async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const res = await fetch(`${API_URL}/predict`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-      if (!res.ok) throw new Error("Prediction failed. Check that the backend is running.");
-      const data = await res.json();
-      navigate("/results", { state: { result: data } });
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
+    const result = await dispatch(runPrediction(form));
+    if (runPrediction.fulfilled.match(result)) {
+      navigate("/results");
     }
   };
 
@@ -146,7 +134,7 @@ export default function PredictPage() {
         )}
 
         <div className="mt-10">
-          <Button icon={FiHeart} loading={loading} onClick={handlePredict}>
+          <Button icon={FiHeart} loading={status === "loading"} onClick={handlePredict}>
             Predict Heart Disease
           </Button>
         </div>

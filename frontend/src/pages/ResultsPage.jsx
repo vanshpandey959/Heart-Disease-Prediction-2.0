@@ -1,17 +1,17 @@
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useEffect } from "react";
-import { FiAlertTriangle, FiCheckCircle, FiArrowLeft, FiRefreshCw } from "react-icons/fi";
+import { useDispatch, useSelector } from "react-redux";
+import { FiAlertTriangle, FiCheckCircle, FiArrowLeft, FiRefreshCw, FiBookmark, FiCheck } from "react-icons/fi";
 import { HiOutlineSparkles } from "react-icons/hi2";
 import RiskGauge from "../components/Results/RiskGauge";
 import ShapChart from "../components/Results/ShapChart";
 import ContributionPie from "../components/Results/ContributionPie";
 import ProbabilityBar from "../components/Results/ProbabilityBar";
+import { savePrediction, clearSaveStatus } from "../store/slices/historySlice";
 
 // ── Small reusable card wrapper ───────────────────────────────────────────────
 const Card = ({ children, className = "" }) => (
-  <div
-    className={`bg-white rounded-2xl p-6 border border-gray-100 shadow-sm ${className}`}
-  >
+  <div className={`bg-white rounded-2xl p-6 border border-gray-100 shadow-sm ${className}`}>
     {children}
   </div>
 );
@@ -23,7 +23,7 @@ const TopFactors = ({ contributions }) => {
   const top = Object.entries(contributions)
     .filter(([, v]) => v > 0.01)
     .slice(0, 3);
-   
+
   return (
     <div>
       <h3 className="font-bold text-gray-800 mb-3">Top Risk Factors</h3>
@@ -33,18 +33,13 @@ const TopFactors = ({ contributions }) => {
           return (
             <div key={label}>
               <div className="flex justify-between text-sm mb-1">
-                <span className="font-medium text-gray-700">
-                  {i + 1}. {label}
-                </span>
+                <span className="font-medium text-gray-700">{i + 1}. {label}</span>
                 <span className="text-red-600 font-bold">+{val.toFixed(3)}</span>
               </div>
               <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
                 <div
                   className="h-full rounded-full transition-all duration-700"
-                  style={{
-                    width: `${pct}%`,
-                    background: `linear-gradient(90deg, #B91C1C, #EF4444)`,
-                  }}
+                  style={{ width: `${pct}%`, background: `linear-gradient(90deg, #B91C1C, #EF4444)` }}
                 />
               </div>
             </div>
@@ -68,10 +63,7 @@ const ExplanationBlock = ({ text, riskLevel }) => {
       }}
     >
       <div className="flex items-center gap-2 mb-3">
-        <HiOutlineSparkles
-          className="text-lg"
-          style={{ color: isHigh ? "#B91C1C" : "#15803D" }}
-        />
+        <HiOutlineSparkles className="text-lg" style={{ color: isHigh ? "#B91C1C" : "#15803D" }} />
         <span
           className="font-bold text-sm uppercase tracking-widest"
           style={{ color: isHigh ? "#B91C1C" : "#15803D" }}
@@ -119,14 +111,21 @@ const InputSummary = ({ inputs }) => {
 
 // ── Main Results Page ─────────────────────────────────────────────────────────
 export default function ResultsPage() {
-  const location = useLocation();
   const navigate = useNavigate();
-  const result = location.state?.result;
+  const dispatch = useDispatch();
 
-  // If navigated here directly without result, go back
+  const result = useSelector((state) => state.prediction.result);
+  const token = useSelector((state) => state.auth.token);
+  const { saveStatus, saveError } = useSelector((state) => state.history);
+
   useEffect(() => {
     if (!result) navigate("/predict");
   }, [result, navigate]);
+
+  // Reset save status when leaving the page / new result
+  useEffect(() => {
+    return () => { dispatch(clearSaveStatus()); };
+  }, [dispatch]);
 
   if (!result) return null;
 
@@ -139,6 +138,14 @@ export default function ResultsPage() {
   const isHigh = prediction === 1;
   const accentColor = isHigh ? "#B91C1C" : "#15803D";
   const hasSHAP = shap_contributions && Object.keys(shap_contributions).length > 0;
+
+  const handleSave = () => {
+    if (!token) {
+      navigate("/login");
+      return;
+    }
+    dispatch(savePrediction(result));
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
@@ -167,38 +174,25 @@ export default function ResultsPage() {
 
         {/* ── Row 1: Gauge + Probability + Top Factors ── */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-
           <Card className="flex flex-col items-center justify-center">
             <RiskGauge probability={probability_disease} riskLevel={risk_level} />
           </Card>
-
           <Card>
-            <ProbabilityBar
-              probDisease={probability_disease}
-              probNoDisease={probability_no_disease}
-            />
+            <ProbabilityBar probDisease={probability_disease} probNoDisease={probability_no_disease} />
           </Card>
-
           <Card>
             <TopFactors contributions={shap_contributions} />
           </Card>
-
         </div>
 
         {/* ── Groq Explanation ── */}
-        {explanation && (
-          <ExplanationBlock text={explanation} riskLevel={risk_level} />
-        )}
+        {explanation && <ExplanationBlock text={explanation} riskLevel={risk_level} />}
 
         {/* ── Row 2: SHAP bar + Pie ── */}
         {hasSHAP && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <ShapChart contributions={shap_contributions} />
-            </Card>
-            <Card>
-              <ContributionPie contributions={shap_contributions} />
-            </Card>
+            <Card><ShapChart contributions={shap_contributions} /></Card>
+            <Card><ContributionPie contributions={shap_contributions} /></Card>
           </div>
         )}
 
@@ -207,8 +201,31 @@ export default function ResultsPage() {
           <InputSummary inputs={input_summary} />
         </Card>
 
+        {/* ── Save feedback ── */}
+        {saveStatus === "succeeded" && (
+          <div className="rounded-xl border border-green-200 bg-green-50 p-3 text-green-700 text-sm font-medium text-center">
+            ✓ Saved to your reports
+          </div>
+        )}
+        {saveStatus === "failed" && (
+          <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-red-600 text-sm font-medium text-center">
+            {saveError}
+          </div>
+        )}
+
         {/* ── Actions ── */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center pt-2">
+          <button
+            onClick={handleSave}
+            disabled={saveStatus === "loading" || saveStatus === "succeeded"}
+            className="flex items-center justify-center gap-2 px-8 py-3 rounded-full font-bold border-2 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+            style={{ borderColor: accentColor, color: accentColor, background: "white" }}
+          >
+            {saveStatus === "succeeded" ? <FiCheck /> : <FiBookmark />}
+            {token
+              ? saveStatus === "succeeded" ? "Saved" : saveStatus === "loading" ? "Saving..." : "Save Report"
+              : "Log in to Save"}
+          </button>
           <button
             onClick={() => navigate("/predict")}
             className="flex items-center justify-center gap-2 px-8 py-3 rounded-full font-bold text-white transition-all hover:opacity-90"

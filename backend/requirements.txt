@@ -1,21 +1,27 @@
-# ── Server ──────────────────────
 fastapi
 uvicorn[standard]
-python-multipart
+pydantic[email]
+pydantic-settings
+python-dotenv
 
-# ── Data / ML ───────────────────
-pydantic
-scikit-learn
-xgboost
-pandas
-numpy
+# Database
+motor
 
-# ── Explainability ───────────────
-shap
+# Auth
+passlib[bcrypt]
+bcrypt==4.0.1
+python-jose[cryptography]
 
-# ── AI Explanation ───────────────
+# ML
+scikit-learn==1.8.0
+xgboost==3.3.0
+pandas==2.3.3
+numpy==2.3.5
+shap==0.52.0
+
+# Groq
 groq
 
-# ── Utilities ───────────────────
-python-dotenv
+python-multipart
+pydantic
 httpx

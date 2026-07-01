@@ -1,13 +1,36 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
 import logo from "../assets/logo.jpg";
+import { logoutUser } from "../store/slices/authSlice";
 
-const NAV_LINKS = ["Predict", "Reports", "Diet Plan", "Routine", "Emergency"];
+const NAV_LINKS = [
+  { label: "Predict", path: "/predict" },
+  { label: "Reports", path: "/reports" },
+  { label: "Diet Plan", path: null },
+  { label: "Routine", path: null },
+  { label: "Emergency", path: null },
+];
 
 export default function Navbar() {
-  const [loggedIn] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { user, token } = useSelector((state) => state.auth);
+  const loggedIn = !!token;
+
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+
+  const handleNavClick = (path) => {
+    setMenuOpen(false);
+    if (path) navigate(path);
+  };
+
+  const handleLogout = () => {
+    dispatch(logoutUser());
+    setUserMenuOpen(false);
+    navigate("/");
+  };
 
   return (
     <>
@@ -49,7 +72,7 @@ export default function Navbar() {
         }
       `}</style>
 
-      <nav className="w-full bg-red-600" style={{ fontFamily: "Roboto, sans-serif" }}>
+      <nav className="w-full bg-red-600 relative" style={{ fontFamily: "Roboto, sans-serif" }}>
 
         {/* ── Main bar ── */}
         <div className="flex items-center w-full px-4 sm:px-6 py-4">
@@ -68,18 +91,49 @@ export default function Navbar() {
           {/* Desktop Nav Links */}
           <ul className="desktop-links flex items-center justify-center gap-6 lg:gap-10 list-none m-0 p-0 flex-1 px-4">
             {NAV_LINKS.map((item) => (
-              <li key={item} className="nav-link">{item}</li>
+              <li
+                key={item.label}
+                className="nav-link"
+                onClick={() => handleNavClick(item.path)}
+              >
+                {item.label}
+              </li>
             ))}
           </ul>
 
-          {/* Right side: Login + Hamburger */}
-          <div className="flex items-center gap-3 shrink-0 ml-auto">
+          {/* Right side: Login/Profile + Hamburger */}
+          <div className="flex items-center gap-3 shrink-0 ml-auto relative">
             {loggedIn ? (
-              <div className="w-10 h-10 rounded-full bg-red-200 border-2 border-white flex items-center justify-center cursor-pointer hover:bg-red-300 transition-colors">
-                <span className="text-red-700 font-bold text-sm">U</span>
+              <div className="relative">
+                <div
+                  onClick={() => setUserMenuOpen((o) => !o)}
+                  className="w-10 h-10 rounded-full bg-red-200 border-2 border-white flex items-center justify-center cursor-pointer hover:bg-red-300 transition-colors"
+                >
+                  <span className="text-red-700 font-bold text-sm">
+                    {user?.name ? user.name[0].toUpperCase() : "U"}
+                  </span>
+                </div>
+
+                {userMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden z-50">
+                    <div className="px-4 py-3 border-b border-gray-100">
+                      <p className="text-sm font-semibold text-gray-800 truncate">
+                        {user?.name}
+                      </p>
+                      <p className="text-xs text-gray-400 truncate">{user?.email}</p>
+                    </div>
+                    <button
+                      onClick={handleLogout}
+                      className="w-full text-left px-4 py-2.5 text-sm text-red-600 font-medium hover:bg-red-50 transition-colors"
+                    >
+                      Logout
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
               <button
+                onClick={() => navigate("/login")}
                 className="rounded-full border-2 text-sm font-medium transition-colors px-4 sm:px-6 py-2 whitespace-nowrap"
                 style={{ borderColor: "#FECACA", color: "#FECACA", background: "transparent" }}
                 onMouseEnter={(e) => {
@@ -119,11 +173,11 @@ export default function Navbar() {
           <ul className="flex flex-col list-none m-0 p-0 px-6 py-3 gap-1">
             {NAV_LINKS.map((item) => (
               <li
-                key={item}
+                key={item.label}
                 className="text-white font-medium py-3 border-b border-red-500 cursor-pointer hover:pl-2 transition-all duration-200 last:border-0"
-                onClick={() => setMenuOpen(false)}
+                onClick={() => handleNavClick(item.path)}
               >
-                {item}
+                {item.label}
               </li>
             ))}
           </ul>
